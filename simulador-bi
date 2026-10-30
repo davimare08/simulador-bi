@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BI Analytics Challenge Simulator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Estilos personalizados mínimos para interacciones */
+        .kpi-card { transition: all 0.3s ease; }
+        .kpi-card:hover { transform: translateY(-2px); box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); }
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-800 font-sans h-screen flex flex-col">
+
+    <!-- Navbar / Dashboard -->
+    <header class="bg-indigo-900 text-white shadow-md p-4 sticky top-0 z-10">
+        <div class="max-w-6xl mx-auto flex justify-between items-center">
+            <div>
+                <h1 class="text-xl font-bold">NovaTech Solutions - BI Simulator</h1>
+                <p class="text-sm text-indigo-200">Rol: Director de Analytics (DAO) | Universidad del Valle</p>
+            </div>
+            <div class="flex items-center space-x-6">
+                <div class="text-center">
+                    <p class="text-xs uppercase tracking-wide text-indigo-300">Ronda</p>
+                    <p class="text-2xl font-bold" id="ui-round">1/4</p>
+                </div>
+                <div class="text-center bg-indigo-800 px-4 py-2 rounded-lg">
+                    <p class="text-xs uppercase tracking-wide text-indigo-300">Tiempo</p>
+                    <p class="text-xl font-mono" id="ui-timer">15:00</p>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Panel de KPIs -->
+    <div class="bg-white border-b shadow-sm">
+        <div class="max-w-6xl mx-auto p-4 grid grid-cols-2 md:grid-cols-5 gap-4" id="kpi-panel">
+            <!-- Renderizado dinámico de KPIs -->
+        </div>
+    </div>
+
+    <!-- Contenedor Principal -->
+    <main class="flex-grow overflow-y-auto p-6">
+        <div class="max-w-4xl mx-auto bg-white rounded-xl shadow-lg p-8 border border-gray-100" id="main-content">
+            <!-- Pantalla de Inicio -->
+            <div id="screen-intro" class="text-center py-10">
+                <h2 class="text-3xl font-bold text-gray-800 mb-4">BI Analytics Challenge</h2>
+                <p class="text-gray-600 mb-8 max-w-2xl mx-auto">Asumes el rol de Director de Analytics en NovaTech Solutions. Deberás tomar decisiones basadas en datos durante 4 trimestres para mejorar la rentabilidad, retención y eficiencia operativa.</p>
+                <button onclick="startGame()" class="bg-indigo-600 text-white px-8 py-3 rounded-lg font-semibold hover:bg-indigo-700 transition">Iniciar Simulación</button>
+            </div>
+
+            <!-- Contenedor de Preguntas -->
+            <div id="screen-game" class="hidden">
+                <div id="question-container"></div>
+                <div class="mt-8 flex justify-between items-center border-t pt-4">
+                    <p class="text-sm text-gray-500" id="progress-text">Reto 1 de 5</p>
+                    <button onclick="submitAnswer()" class="bg-indigo-600 text-white px-6 py-2 rounded-lg font-medium hover:bg-indigo-700">Confirmar Decisión</button>
+                </div>
+            </div>
+
+            <!-- Reporte Final -->
+            <div id="screen-report" class="hidden">
+                <h2 class="text-3xl font-bold text-gray-800 mb-6 border-b pb-2">Reporte de Desempeño Ejecutivo</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
+                    <div class="bg-gray-50 p-6 rounded-lg border">
+                        <h3 class="text-lg font-semibold text-gray-700 mb-2">Puntuación Global</h3>
+                        <p class="text-5xl font-bold text-indigo-600" id="final-score">0</p>
+                        <p class="text-sm text-gray-500 mt-2">Sobre 100 puntos posibles</p>
+                    </div>
+                    <div id="final-kpis" class="grid grid-cols-2 gap-4"></div>
+                </div>
+                
+                <h3 class="text-xl font-semibold mb-4">Análisis de Impacto Pedagógico</h3>
+                <div id="pedagogical-feedback" class="space-y-4 mb-8"></div>
+
+                <div class="flex space-x-4">
+                    <button onclick="exportCSV()" class="bg-green-600 text-white px-6 py-2 rounded-lg font-medium hover:bg-green-700 flex items-center">
+                        Descargar Reporte (CSV)
+                    </button>
+                    <button onclick="resetGame()" class="bg-gray-200 text-gray-800 px-6 py-2 rounded-lg font-medium hover:bg-gray-300">
+                        Reiniciar Simulación
+                    </button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // --- 1. DEFINICIÓN DE DATOS Y MATRIZ DE IMPACTO ---
+        const initialKPIs = {
+            budget: { label: "Presupuesto BI ($)", value: 50000, prefix: "$" },
+            roi: { label: "ROI (%)", value: 5, prefix: "", suffix: "%" },
+            nps: { label: "NPS", value: 20, prefix: "", suffix: " pts" },
+            churn: { label: "Churn Rate (%)", value: 12, prefix: "", suffix: "%" },
+            prod: { label: "Productividad Analítica", value: 60, prefix: "", suffix: "%" }
+        };
+
+        const database = [
+            // RONDA 1
+            [
+                {
+                    area: 'Finanzas', type: 'multiple',
+                    text: 'Para el Q1, debes asignar el presupuesto de infraestructura. ¿Qué estrategia maximiza el ROI a mediano plazo considerando la escalabilidad?',
+                    options: [
+                        { text: 'Mantener servidores locales On-Premise (Bajo costo inicial)', impact: { budget: -5000, roi: -2 } },
+                        { text: 'Migración parcial a Cloud Data Warehouse (Balanceado)', impact: { budget: -15000, roi: 5 } },
+                        { text: 'Contratar consultoría externa completa sin capacitar equipo', impact: { budget: -30000, roi: 1, prod: -10 } }
+                    ],
+                    correctIdx: 1, explanation: 'Cloud DW permite escalar costos según uso (OpEx), mejorando el ROI sin descapitalizar la empresa.'
+                },
+                {
+                    area: 'Clientes', type: 'tf',
+                    text: 'Análisis de Churn: "Un aumento del 5% en la retención de clientes puede incrementar la rentabilidad en más de un 25%." ¿Es esta premisa verdadera en modelos SaaS?',
+                    options: [{text: 'Verdadero', impact: { churn: -2, roi: 4 }}, {text: 'Falso', impact: { churn: 1, roi: -1 }}],
+                    correctIdx: 0, explanation: 'Verdadero. Según Bain & Company, el costo de retener es menor al CAC, impactando directamente el LTV y ROI.'
+                },
+                {
+                    area: 'Ventas', type: 'match',
+                    text: 'Empareja cada KPI de Ventas con su correcta interpretación analítica:',
+                    pairs: [
+                        { item: 'CAC', match: 'Costo de adquirir un cliente nuevo' },
+                        { item: 'LTV', match: 'Valor neto de ingresos por cliente en su ciclo de vida' },
+                        { item: 'Forecasting', match: 'Predicción de ventas futuras mediante modelos estadísticos' }
+                    ],
+                    impactCorrect: { roi: 2, budget: 1000 }, impactWrong: { roi: -1 },
+                    explanation: 'Relacionar métricas financieras (CAC/LTV) es vital para el modelado predictivo.'
+                },
+                {
+                    area: 'Talento Humano', type: 'fill',
+                    text: 'Completa la cláusula SQL para calcular el promedio de productividad de los analistas: SELECT _____ (productividad) FROM equipo_bi WHERE rol = "Analista";',
+                    answer: 'AVG',
+                    impactCorrect: { prod: 10 }, impactWrong: { prod: -5 },
+                    explanation: 'La función AVG() es fundamental en SQL para obtener promedios descriptivos.'
+                },
+                {
+                    area: 'Operaciones', type: 'order',
+                    text: 'Ordena secuencialmente las etapas del pipeline de datos (ETL) clásico:',
+                    items: ['Transformación y Limpieza', 'Extracción de Fuentes', 'Visualización en Dashboard', 'Carga en Data Warehouse'],
+                    correctOrder: [1, 0, 3, 2], // Extracción (1), Transformación (0), Carga (3), Visualización (2)
+                    impactCorrect: { prod: 15, roi: 3 }, impactWrong: { prod: -10 },
+                    explanation: 'El orden lógico es Extracción, Transformación, Carga (ETL) y finalmente Consumo/Visualización.'
+                }
+            ],
+            // RONDAS 2, 3 y 4 (Estructura simplificada para el ejemplo, repitiendo esquema Q1 adaptado)
+            // En producción, el docente llena estos arrays con sus 20 retos.
+            [
+                {
+                    area: 'Finanzas', type: 'multiple',
+                    text: 'Ronda 2: El CAC se ha disparado. ¿Qué métrica revisas primero en tu dashboard de BI?',
+                    options: [
+                        { text: 'Tasa de conversión por canal de marketing', impact: { budget: 2000, roi: 3 } },
+                        { text: 'Gastos fijos de oficina', impact: { budget: 0, roi: -1 } }
+                    ],
+                    correctIdx: 0, explanation: 'El CAC se relaciona directamente con el rendimiento de los canales de adquisición.'
+                }
+            ]
+        ];
+
+        // Rellenar Rondas 3 y 4 dinámicamente para completar el flujo en este simulador de ejemplo
+        database.push(database[1]); 
+        database.push(database[0]); 
+
+        // --- 2. GESTIÓN DE ESTADO ---
+        let state = {
+            round: 1, currentQuestionIdx: 0, timeRemaining: 900,
+            kpis: JSON.parse(JSON.stringify(initialKPIs)),
+            history: [], score: 0, mistakes: []
+        };
+        let timerInterval;
+
+        // Inicialización y LocalStorage
+        function init() {
+            const saved = localStorage.getItem('bi_sim_state');
+            if (saved) {
+                state = JSON.parse(saved);
+                if (state.round > 4) {
+                    showReport();
+                    return;
+                }
+                document.getElementById('screen-intro').classList.add('hidden');
+                document.getElementById('screen-game').classList.remove('hidden');
+                startTimer();
+                updateUI();
+                renderQuestion();
+            } else {
+                updateUI();
+            }
+        }
+
+        function saveState() {
+            localStorage.setItem('bi_sim_state', JSON.stringify(state));
+        }
+
+        function resetGame() {
+            localStorage.removeItem('bi_sim_state');
+            location.reload();
+        }
+
+        function startGame() {
+            document.getElementById('screen-intro').classList.add('hidden');
+            document.getElementById('screen-game').classList.remove('hidden');
+            state.timeRemaining = 900; // 15 minutos por ronda
+            startTimer();
+            renderQuestion();
+        }
+
+        // --- 3. TEMPORIZADOR ---
+        function startTimer() {
+            clearInterval(timerInterval);
+            timerInterval = setInterval(() => {
+                state.timeRemaining--;
+                if (state.timeRemaining <= 0) {
+                    clearInterval(timerInterval);
+                    alert("¡Tiempo agotado para esta ronda! Procesando resultados...");
+                    advanceRound();
+                }
+                
+                let mins = Math.floor(state.timeRemaining / 60);
+                let secs = state.timeRemaining % 60;
+                document.getElementById('ui-timer').innerText = `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+                saveState();
+            }, 1000);
+        }
+
+        // --- 4. MOTOR DE RENDERIZADO UI ---
+        function updateUI() {
+            document.getElementById('ui-round').innerText = `${state.round}/4`;
+            const panel = document.getElementById('kpi-panel');
+            panel.innerHTML = '';
+            for (let key in state.kpis) {
+                const kpi = state.kpis[key];
+                let valClass = kpi.value < 0 ? 'text-red-600' : 'text-green-700';
+                if(key === 'churn' && kpi.value > 15) valClass = 'text-red-600';
+                
+                panel.innerHTML += `
+                    <div class="kpi-card bg-gray-50 p-4 rounded-lg border text-center">
+                        <p class="text-xs text-gray-500 font-semibold uppercase tracking-wider">${kpi.label}</p>
+                        <p class="text-2xl font-bold ${valClass} mt-1">${kpi.prefix}${kpi.value.toLocaleString()}${kpi.suffix}</p>
+                    </div>`;
+            }
+        }
+
+        function renderQuestion() {
+            const currentRoundData = database[state.round - 1];
+            if (state.currentQuestionIdx >= currentRoundData.length) {
+                advanceRound();
+                return;
+            }
+
+            const q = currentRoundData[state.currentQuestionIdx];
+            document.getElementById('progress-text').innerText = `Ronda ${state.round} - Reto ${state.currentQuestionIdx + 1} de ${currentRoundData.length} | Área: ${q.area}`;
+            const container = document.getElementById('question-container');
+            
+            let html = `<h3 class="text-xl font-semibold mb-6 text-gray-800">${q.text}</h3>`;
+
+            if (q.type === 'multiple' || q.type === 'tf') {
+                html += `<div class="space-y-3">`;
+                q.options.forEach((opt, idx) => {
+                    html += `
+                        <label class="flex items-center p-4 border rounded-lg cursor-pointer hover:bg-indigo-50 transition">
+                            <input type="radio" name="answer" value="${idx}" class="h-4 w-4 text-indigo-600">
+                            <span class="ml-3 text-gray-700">${opt.text}</span>
+                        </label>`;
+                });
+                html += `</div>`;
+            } 
+            else if (q.type === 'match') {
+                html += `<div class="space-y-4">`;
+                const options = [...q.pairs].sort(() => Math.random() - 0.5).map(p => p.match);
+                q.pairs.forEach((p, idx) => {
+                    let selectHtml = `<select id="match-${idx}" class="ml-4 border-gray-300 rounded-md shadow-sm p-2 w-full md:w-2/3 focus:ring-indigo-500 focus:border-indigo-500">
+                        <option value="">Selecciona correspondencia...</option>`;
+                    options.forEach(opt => selectHtml += `<option value="${opt}">${opt}</option>`);
+                    selectHtml += `</select>`;
+                    
+                    html += `<div class="flex flex-col md:flex-row items-start md:items-center justify-between p-3 bg-gray-50 rounded border">
+                                <span class="font-medium text-gray-800 w-full md:w-1/3 mb-2 md:mb-0">${p.item}</span>
+                                ${selectHtml}
+                             </div>`;
+                });
+                html += `</div>`;
+            }
+            else if (q.type === 'fill') {
+                html += `<div class="mt-4">
+                            <input type="text" id="fill-answer" placeholder="Escribe el comando/fórmula aquí..." 
+                            class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 uppercase">
+                         </div>`;
+            }
+            else if (q.type === 'order') {
+                html += `<p class="text-sm text-gray-500 mb-4">Asigna un número del 1 al ${q.items.length} para ordenar cronológicamente:</p><div class="space-y-3">`;
+                q.items.forEach((item, idx) => {
+                    html += `<div class="flex items-center space-x-4 p-3 border rounded-lg bg-gray-50">
+                                <input type="number" min="1" max="${q.items.length}" id="order-${idx}" class="w-16 p-2 border rounded text-center">
+                                <span class="text-gray-700">${item}</span>
+                             </div>`;
+                });
+                html += `</div>`;
+            }
+
+            container.innerHTML = html;
+        }
+
+        // --- 5. LÓGICA Y EVALUACIÓN (DETERMINISTA) ---
+        function submitAnswer() {
+            const currentRoundData = database[state.round - 1];
+            const q = currentRoundData[state.currentQuestionIdx];
+            let isCorrect = false;
+            let impactToApply = {};
+
+            if (q.type === 'multiple' || q.type === 'tf') {
+                const selected = document.querySelector('input[name="answer"]:checked');
+                if (!selected) return alert("Por favor, selecciona una respuesta.");
+                const val = parseInt(selected.value);
+                isCorrect = (val === q.correctIdx);
+                impactToApply = q.options[val].impact;
+            } 
+            else if (q.type === 'match') {
+                isCorrect = true;
+                for (let i = 0; i < q.pairs.length; i++) {
+                    if (document.getElementById(`match-${i}`).value !== q.pairs[i].match) isCorrect = false;
+                }
+                impactToApply = isCorrect ? q.impactCorrect : q.impactWrong;
+            }
+            else if (q.type === 'fill') {
+                const val = document.getElementById('fill-answer').value.trim().toUpperCase();
+                if (!val) return alert("El campo no puede estar vacío.");
+                isCorrect = (val === q.answer.toUpperCase());
+                impactToApply = isCorrect ? q.impactCorrect : q.impactWrong;
+            }
+            else if (q.type === 'order') {
+                isCorrect = true;
+                const userOrder = [];
+                for (let i = 0; i < q.items.length; i++) {
+                    const val = document.getElementById(`order-${i}`).value;
+                    if(!val) return alert("Completa todos los campos de ordenamiento.");
+                    // Convertir input 1-based a 0-based index
+                    userOrder.push(parseInt(val) - 1);
+                }
+                // Validar array contra q.correctOrder
+                if(JSON.stringify(userOrder) !== JSON.stringify(q.correctOrder)) isCorrect = false;
+                impactToApply = isCorrect ? q.impactCorrect : q.impactWrong;
+            }
+
+            // Aplicar Matriz de Impacto a KPIs
+            for (let key in impactToApply) {
+                state.kpis[key].value += impactToApply[key];
+            }
+
+            // Registro histórico y puntuación
+            if (isCorrect) {
+                state.score += (100 / (database.flat().length)); // Ponderación equitativa
+            } else {
+                state.mistakes.push({ area: q.area, feedback: q.explanation });
+            }
+
+            state.history.push({ round: state.round, area: q.area, correct: isCorrect });
+            
+            // Avanzar pregunta
+            state.currentQuestionIdx++;
+            updateUI();
+            saveState();
+            renderQuestion();
+        }
+
+        function advanceRound() {
+            state.round++;
+            state.currentQuestionIdx = 0;
+            state.timeRemaining = 900; // Reset timer para nueva ronda
+            
+            if (state.round > 4) {
+                clearInterval(timerInterval);
+                saveState();
+                showReport();
+            } else {
+                alert(`¡Ronda ${state.round-1} completada! Los KPIs han sido actualizados según el impacto de tus decisiones.`);
+                updateUI();
+                saveState();
+                renderQuestion();
+            }
+        }
+
+        // --- 6. REPORTE FINAL Y EXPORTACIÓN ---
+        function showReport() {
+            document.getElementById('screen-game').classList.add('hidden');
+            document.getElementById('screen-report').classList.remove('hidden');
+            document.getElementById('kpi-panel').parentElement.classList.add('hidden');
+            document.querySelector('header').classList.add('hidden');
+
+            document.getElementById('final-score').innerText = Math.round(state.score);
+
+            const finalKpisContainer = document.getElementById('final-kpis');
+            finalKpisContainer.innerHTML = '';
+            for (let key in state.kpis) {
+                const kpi = state.kpis[key];
+                finalKpisContainer.innerHTML += `
+                    <div class="bg-white p-4 border rounded shadow-sm">
+                        <p class="text-xs text-gray-500 uppercase">${kpi.label}</p>
+                        <p class="text-xl font-bold text-gray-800">${kpi.prefix}${kpi.value.toLocaleString()}${kpi.suffix}</p>
+                    </div>`;
+            }
+
+            const feedbackContainer = document.getElementById('pedagogical-feedback');
+            if (state.mistakes.length === 0) {
+                feedbackContainer.innerHTML = `<div class="p-4 bg-green-50 text-green-800 rounded border border-green-200">¡Excelente desempeño! Tienes un dominio completo de las métricas y estrategias de BI.</div>`;
+            } else {
+                // Agrupar feedback por área
+                const errorsByArea = {};
+                state.mistakes.forEach(m => {
+                    if(!errorsByArea[m.area]) errorsByArea[m.area] = [];
+                    errorsByArea[m.area].push(m.feedback);
+                });
+
+                let feedbackHtml = '';
+                for (let area in errorsByArea) {
+                    feedbackHtml += `
+                        <div class="p-4 bg-red-50 rounded border border-red-100">
+                            <h4 class="font-bold text-red-800 mb-2">Oportunidad de Mejora en ${area}</h4>
+                            <ul class="list-disc pl-5 text-sm text-red-700 space-y-1">
+                                ${errorsByArea[area].map(f => `<li>${f}</li>`).join('')}
+                            </ul>
+                        </div>`;
+                }
+                feedbackContainer.innerHTML = feedbackHtml;
+            }
+        }
+
+        function exportCSV() {
+            let csvContent = "data:text/csv;charset=utf-8,";
+            csvContent += "Reporte Simulador BI Analytics - Universidad del Valle\n\n";
+            csvContent += `Puntaje Final,${Math.round(state.score)}\n\n`;
+            
+            csvContent += "KPI,Valor Final\n";
+            for (let key in state.kpis) {
+                csvContent += `${state.kpis[key].label},${state.kpis[key].value}\n`;
+            }
+            
+            csvContent += "\nHistorial de Decisiones\nRonda,Area,Acierto\n";
+            state.history.forEach(h => {
+                csvContent += `${h.round},${h.area},${h.correct ? 'Si' : 'No'}\n`;
+            });
+
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", "Reporte_Simulador_BI_Univalle.csv");
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        // Iniciar app
+        window.onload = init;
+    </script>
+</body>
+</html>
